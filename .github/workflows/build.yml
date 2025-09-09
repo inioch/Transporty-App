@@ -17,14 +17,16 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
+        shell: powershell
         run: |
-          pip install --upgrade pip
-          pip install pyinstaller
-          # jeśli masz requirements.txt
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          python -m pip install --upgrade pip
+          if (Test-Path "requirements.txt") {
+            pip install -r requirements.txt
+          }
 
       - name: Build exe
         run: pyinstaller --onefile transporty.py
+        shell: powershell
 
       - name: Upload exe
         uses: actions/upload-artifact@v4
