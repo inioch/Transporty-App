@@ -1,0 +1,21 @@
+name: Build exe
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - run: pip install pyinstaller
+      - run: pyinstaller --onefile transporty.py
+      - uses: actions/upload-artifact@v3
+        with:
+          name: transporty-exe
+          path: dist/transporty.exe
