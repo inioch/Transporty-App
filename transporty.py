@@ -49,9 +49,9 @@ class App:
         menubar.add_cascade(label="Widok", menu=view_menu)
 
 # Menu: dodac o autorze!
-        # analysis_menu = tk.Menu(menubar, tearoff=0)
-        # analysis_menu.add_command(label="Licz", command=self.package_count)
-        # menubar.add_cascade(label="Analiza", menu=analysis_menu)
+        analysis_menu = tk.Menu(menubar, tearoff=0)
+        analysis_menu.add_command(label="O autorze", command=self.autor)
+        menubar.add_cascade(label="O autorze", menu=analysis_menu)
 
 # Dodanie menu do okna
         self.root.config(menu=menubar)        
@@ -60,6 +60,8 @@ class App:
         self.label_count = tk.Label(self.root, textvariable=self.packageCount, font=("Arial", 12))
         self.label_count.pack(pady=10)
 
+    def autor(self):
+        messagebox.showinfo("O autorze", "Aplikacja stworzona przez Pawła Kuczaka – kopiowanie i używanie bez wiedzy autora zabronione")
     def convert_multiple_csv(self, file_paths):
         selected_headers = ['LP', 'AWB', 'Parts', 'Weight', 'Name', 'Address', 'Town', 'Postcode', 'Number', 'Product']
         selected_columns = [2, 4, 10, 11, 26, 27, 29, 30, 34, 52]
