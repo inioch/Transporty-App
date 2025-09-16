@@ -11,6 +11,7 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Transporty")
+
 # zawsze pelny ekran
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
@@ -25,7 +26,7 @@ class App:
 
     # === GUI Layout ===
     def setup_gui(self):
-# string do pokazywanie ilosci paczek
+    # string do pokazywanie ilosci paczek
         self.packageCount = tk.StringVar()
         self.packageCount.set("Ilość paczek")
 
@@ -68,14 +69,19 @@ class App:
 
         for file_path in file_paths:
             data = self.read_and_filter_csv(file_path, selected_columns, selected_headers)
+            print(file_path, "-> wierszy:", len(data) if data else 0)  # <- debug
             if data:
                 all_data.extend(data)
 
+        print("Łącznie wierszy do zapisu:", len(all_data))  # <- debug
+
         if all_data:
+            for idx, row in enumerate(all_data, start=1):
+                row[0] = idx
+                self.sum_parts += int(row[2])
             self.save_to_excel(selected_headers, all_data)
         else:
             messagebox.showinfo("Brak danych", "Nie znaleziono danych w żadnym z plików")
-
 
 # pytania gdzie zapisac plik
     def ask_save_location(self, default_name):
@@ -113,8 +119,7 @@ class App:
 
         if messagebox.askyesno("Potwierdzenie", f"Znaleziono {len(csv_files)} plików. Czy chcesz je przetworzyć?"):
             self.delete_file()
-            self.convert_multiple_csv(csv_files)
-            self.save_to_excel()
+            self.convert_multiple_csv(csv_files)  # <-- tylko to wystarczy
 
 # === Obsługa plików ===
     def delete_file(self, file_name="A_clean.xlsx"):
@@ -176,11 +181,23 @@ class App:
         except ValueError:
             return 0
     def save_to_excel(self, headers, data, file_name="A_clean.xlsx"):
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Dane"
-        ws.append(headers)
+        file_path = os.path.join(os.getcwd(), file_name)
 
+        if os.path.exists(file_path):
+            # Jeśli plik istnieje → wczytaj go
+            wb = load_workbook(file_path)
+            if "Dane" in wb.sheetnames:
+                ws = wb["Dane"]
+            else:
+                ws = wb.active
+        else:
+            # Jeśli plik nie istnieje → utwórz nowy
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Dane"
+            ws.append(headers)  # dodaj nagłówki tylko raz, w nowym pliku
+
+        # Dopisz nowe dane
         for row in data:
             ws.append(row)
 
@@ -197,19 +214,12 @@ class App:
                     except:
                         pass
 
-        wb.save(os.path.join(os.getcwd(), file_name))
+        wb.save(file_path)
 
         messagebox.showinfo("Sukces", f"Plik zapisano jako {file_name}")
         self.show_table()
         self.package_count()
 
-    def convert_csv(self, file_path):
-        selected_headers = ['LP', 'AWB', 'Parts', 'Weight', 'Name', 'Address', 'Town', 'Postcode', 'Number', 'Phone']
-        selected_columns = [2, 4, 10, 11, 26, 27, 29, 30, 34, 52]
-
-        data = self.read_and_filter_csv(file_path, selected_columns, selected_headers)
-        if data:
-            self.save_to_excel(selected_headers, data)
 
     # === Wyświetlanie tabeli ===
     def show_table(self):
@@ -302,21 +312,32 @@ class App:
             headers = [cell.value for cell in sheet[1]]
             filtered_rows = []
 
+            # iterujemy po wierszach
             for row in sheet.iter_rows(min_row=2, values_only=True):
                 try:
                     parts = int(row[2])
                     weight = float(row[3])
-                    if parts > 0 and (weight / parts) > 30:
-                        filtered_rows.append(row)
+                    if parts > 0 and (weight / parts) > 30:  # paleta
+                        single_weight = weight / parts
+                        # rozbijamy na pojedyncze wiersze
+                        for _ in range(parts):
+                            new_row = list(row)
+                            new_row[0] = 0  # LP zostawimy do ponownego numerowania
+                            new_row[2] = 1  # Parts = 1
+                            new_row[3] = single_weight  # waga pojedynczej sztuki
+                            filtered_rows.append(new_row)
                 except:
                     continue
+
+            # przelicz LP od nowa
+            for idx, row in enumerate(filtered_rows, start=1):
+                row[0] = idx  # LP = idx
 
             self.show_filtered_table(headers, filtered_rows)
 
         except Exception as e:
             messagebox.showerror("Błąd", str(e))
 
-# pokaz wielopaki
 
     def show_multipacks(self):
         try:
@@ -328,16 +349,22 @@ class App:
             for row in sheet.iter_rows(min_row=2, values_only=True):
                 try:
                     parts = int(row[2])
-                    if parts > 10:
-                        filtered_rows.append(row)
+                    if parts > 10:  # wielopak
+                        # zostawiamy w całości
+                        new_row = list(row)
+                        new_row[0] = 0  # LP = 0, przeliczymy od nowa
+                        filtered_rows.append(new_row)
                 except:
                     continue
+
+            # przelicz LP od nowa
+            for idx, row in enumerate(filtered_rows, start=1):
+                row[0] = idx
 
             self.show_filtered_table(headers, filtered_rows)
 
         except Exception as e:
             messagebox.showerror("Błąd", str(e))
-
     def export_both(self):
         try:
             wb = load_workbook("A_clean.xlsx")
